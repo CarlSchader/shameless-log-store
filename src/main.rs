@@ -8,3 +8,8 @@ async fn main() {
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
+
+struct Log {
+    timestamp: u32,
+    payload: &[u8], // need to read up on lifetimes
+}
