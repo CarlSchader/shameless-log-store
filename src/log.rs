@@ -1,10 +1,10 @@
 pub struct Log {
     pub timestamp: u32,
-    pub payload: String, // need to read up on lifetimes and make this &[u8] byte array
+    pub payload: String, 
 }
 
 impl Log {
-    pub fn to_string(&self) -> String {
+    pub fn to_line(&self) -> String {
         return String::from(format!("{} {}", self.timestamp, self.payload))
     }
 }
