@@ -38,7 +38,7 @@ pub fn tail_file(mut file: &fs::File, lines: usize, line_offset: usize) -> Resul
     return Ok(found_lines);
 }
 
-pub fn log_file_string_to_logs(file_string: String) -> Result<Vec<log::Log>, Box<dyn std::error::Error>> {
+pub fn log_file_string_to_logs(file_string: &String) -> Result<Vec<log::Log>, Box<dyn std::error::Error>> {
     let mut log_vec: Vec<log::Log> = Vec::new();
     let mut start_timestamp: u64 = 0;
     let mut end_timestamp: u64 = 0;
@@ -100,4 +100,38 @@ pub fn log_file_string_to_logs(file_string: String) -> Result<Vec<log::Log>, Box
     }
 
     return Ok(log_vec);
+}
+
+pub fn logs_to_file_string(logs: &Vec<log::Log>) -> Result<String, Box<dyn std::error::Error>> {
+    let log_count = logs.len();
+    if log_count == 0 {
+        return Err("logs Vec cannot be empty".into());
+    }
+
+    let mut start_timestamp = u64::max_value();
+    let mut end_timestamp = u64::min_value();
+    let mut previous_timestamp = u64::min_value();
+    let mut body_string = String::from("");
+
+    for log in logs {
+        if log.timestamp > previous_timestamp {
+            return Err("logs are out of order".into());
+        }
+
+        if log.timestamp < start_timestamp {
+            start_timestamp = log.timestamp;
+        }
+
+        if log.timestamp > end_timestamp {
+            end_timestamp = log.timestamp;
+        }
+
+        previous_timestamp = log.timestamp;
+        body_string = body_string + &log.to_string();
+    }
+    
+    let mut file_string = format!("{start_timestamp}\n{end_timestamp}\n{log_count}\n");
+    file_string = file_string + &body_string;
+
+    return Ok(file_string);
 }
