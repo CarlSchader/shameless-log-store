@@ -40,10 +40,16 @@ async fn read_logs(Query(params): Query<HashMap<String, String>>) -> (StatusCode
         Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("error tailing file for {user_id}: {e}")),
     };
 
-    for line in lines {
-        println!("{line}");
+    println!("LINES -- {:?}", lines);
+    let mut logs: Vec<log::Log> = Vec::new();
+    for line in lines.iter() {
+        println!("LINE -- {line}");
+        match log::Log::from_string(line) {
+            Ok(new_log) => logs.push(new_log),
+            Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("error reading log file: {e}")),
+        } 
     }
 
-    return (StatusCode::OK, user_id.to_string() + &limit.to_string());
+    return (StatusCode::OK, lines.join("\n"));
 }
 

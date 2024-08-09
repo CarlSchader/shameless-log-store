@@ -1,4 +1,4 @@
-use std::{cmp, fs, io::{Read, Seek, SeekFrom}, ops::Sub};
+use std::{cmp, fs, io::{Read, Seek, SeekFrom}};
 
 const TAIL_BUFFER_SIZE: usize = 1024;
 
