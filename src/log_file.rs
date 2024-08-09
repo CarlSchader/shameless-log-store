@@ -46,7 +46,7 @@ pub fn log_file_string_to_logs(file_string: String) -> Result<Vec<log::Log>, Box
 
     // these values are the timestamps found in the logs themselves
     // they should be consistant with the header timestamps
-    let mut found_start_timestamp: u64 = 0;
+    let mut found_start_timestamp: u64 = u64::max_value();
     let mut found_end_timestamp: u64 = 0;
     let mut previous_timestamp: u64 = 0;
 
@@ -93,6 +93,10 @@ pub fn log_file_string_to_logs(file_string: String) -> Result<Vec<log::Log>, Box
     
     if found_end_timestamp != end_timestamp {
         return Err("header end timestamp isn't consistant with logs".into());
+    }
+
+    if end_timestamp < start_timestamp {
+        return Err("header end timestamp is less than header start timestamp".into());
     }
 
     return Ok(log_vec);
