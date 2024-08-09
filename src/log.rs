@@ -1,3 +1,5 @@
+use core::fmt;
+
 #[derive(Debug)]
 #[derive(Clone)]
 pub struct Log {
@@ -28,8 +30,23 @@ impl Log {
         }
     }
 
-    pub fn to_string(&self) -> String {
+    pub fn format_vector_as_json(v: &Vec<Log>) -> String {
+        let mut s = String::new();
+        for log in v {
+            s += &log.to_string();
+        }
+
+        return format!("[{s}]");
+    }
+
+    pub fn to_line(&self) -> String {
         return format!("{} {}", self.timestamp, self.payload);
+    }
+}
+
+impl fmt::Display for Log {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{{\"timestamp\": \"{}\", \"payload\": \"{}\"}}", self.timestamp, self.payload)
     }
 }
 
@@ -37,7 +54,7 @@ pub fn merge_logs(mut logs_a: Vec<Log>, mut logs_b: Vec<Log>) -> Result<Vec<Log>
     let mut returned_logs = vec![Log{timestamp: 0, payload: "".to_string()}; logs_a.len() + logs_b.len()];
     let mut i = returned_logs.len() - 1;
     let mut previous_timestamp = u64::max_value();
-
+    
     while logs_a.len() > 0 && logs_b.len() > 0 {
         let next_log: Log;
         if logs_b.last().unwrap().timestamp < logs_a.last().unwrap().timestamp {

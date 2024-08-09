@@ -1,5 +1,11 @@
-use std::{cmp, fs, io::{Read, Seek, SeekFrom}};
+use std::{cmp, fs, io::{BufRead, BufReader, Read, Seek, SeekFrom}};
 use crate::log;
+
+pub struct LogFileHeaders {
+    start_timestamp: u64,
+    end_timestamp: u64,
+    log_count: u64,
+}
 
 const TAIL_BUFFER_SIZE: usize = 1024;
 
@@ -38,7 +44,39 @@ pub fn tail_file(mut file: &fs::File, lines: usize, line_offset: usize) -> Resul
     return Ok(found_lines);
 }
 
-pub fn log_file_string_to_logs(file_string: &String) -> Result<Vec<log::Log>, Box<dyn std::error::Error>> {
+pub fn read_headers(file: &fs::File) -> Result<LogFileHeaders, Box<dyn std::error::Error>> {
+    let mut buff = BufReader::new(file);
+ 
+    let mut start_timestamp = String::new();
+    buff.read_line(&mut start_timestamp)?;
+    let start_timestamp: u64 = start_timestamp.trim().parse()?;
+
+    let mut end_timestamp = String::new();
+    buff.read_line(&mut end_timestamp)?;
+    let end_timestamp: u64 = end_timestamp.trim().parse()?;
+    
+    let mut log_count = String::new();
+    buff.read_line(&mut log_count)?;
+    let log_count: u64 = log_count.trim().parse()?;
+
+    return Ok(LogFileHeaders {start_timestamp, end_timestamp, log_count});
+}
+
+pub fn read_logs(file: &fs::File, limit: usize, offset: usize) -> Result<Vec<log::Log>, Box<dyn std::error::Error>> {
+    let header = read_headers(file)?;
+    let mut logs: Vec<log::Log> = Vec::new();
+
+    let lines = tail_file(file, limit, offset)?;
+    let mut i = 0;
+    while i < lines.len() && logs.len() < limit && ((logs.len() + offset) as u64) < header.log_count {
+        logs.push(log::Log::from_string(&lines[i])?);
+        i += 1;
+    } 
+    
+    return Ok(logs);
+}
+
+pub fn file_string_to_logs(file_string: &String) -> Result<Vec<log::Log>, Box<dyn std::error::Error>> {
     let mut log_vec: Vec<log::Log> = Vec::new();
     let mut start_timestamp: u64 = 0;
     let mut end_timestamp: u64 = 0;
@@ -127,7 +165,7 @@ pub fn logs_to_file_string(logs: &Vec<log::Log>) -> Result<String, Box<dyn std::
         }
 
         previous_timestamp = log.timestamp;
-        body_string = body_string + &log.to_string();
+        body_string = body_string + &log.to_line();
     }
     
     let mut file_string = format!("{start_timestamp}\n{end_timestamp}\n{log_count}\n");
