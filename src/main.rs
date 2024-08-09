@@ -32,7 +32,7 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn read_logs(Query(params): Query<HashMap<String, String>>) -> (StatusCode, String) {
+async fn read_logs(State(state): State<Arc<AppState>>, Query(params): Query<HashMap<String, String>>) -> (StatusCode, String) {
     let user_id = match params.get("user_id") {
         Some(id) => id,
         None => return (StatusCode::BAD_REQUEST, "no user_id provided in query string".to_string()),
@@ -52,7 +52,13 @@ async fn read_logs(Query(params): Query<HashMap<String, String>>) -> (StatusCode
         Err(e) => return (StatusCode::OK, format!("error parsing limit query param: {e}")),
     };
 
-    let f = match File::open(user_id) {
+    let user_file_path = std::path::Path::new(&state.log_dir).join(user_id);
+
+    if !user_file_path.exists() {
+        return (StatusCode::OK, "NONE".to_string())
+    }
+
+    let f = match File::open(user_file_path) {
         Ok(val) => val,
         Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("error opening file for {user_id}: {e}")),
     };
@@ -80,16 +86,29 @@ async fn write_log_file(State(state): State<Arc<AppState>>, Query(params): Query
     };
 
     let user_file_path = std::path::Path::new(&state.log_dir).join(user_id);
-    
-    let mut user_file = match fs::File::open(&user_file_path) {
-        Ok(file) => file,
-        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("error opening log file for user {user_id} -- {e}")),
-    };
 
     let new_logs = match log_file::log_file_string_to_logs(&body) {
         Err(e) => return (StatusCode::BAD_REQUEST, e.to_string()),
         Ok(logs) => logs,
     };
+    
+    let mut user_file: fs::File;
+    if user_file_path.exists() {
+        user_file = match fs::File::open(&user_file_path) {
+            Ok(file) => file,
+            Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("error opening log file for user {user_id} -- {e}")),
+        };
+    } else {
+        match std::fs::File::create(&user_file_path) {
+            Ok(mut file) => {
+                match file.write(body.as_bytes()) {
+                    Ok(_) => return (StatusCode::OK, format!("new log file created for {user_id}")),
+                    Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("error opening log file for user {user_id} -- {e}")),
+                }
+            }
+            Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("error creating log file for user {user_id} -- {e}")),
+        };
+    }
 
     let mut current_logs_file_string = String::new();
     if let Err(e) = user_file.read_to_string(&mut current_logs_file_string) {
