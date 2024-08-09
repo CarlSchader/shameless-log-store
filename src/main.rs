@@ -61,6 +61,9 @@ async fn read_logs(Query(params): Query<HashMap<String, String>>) -> (StatusCode
 }
 
 async fn write_log_file(body: String) -> (StatusCode, String) {
-    println!("{body}");
+    match log_file::log_file_string_to_logs(body) {
+        Err(e) => return (StatusCode::BAD_REQUEST, e.to_string()),
+        _ => (),
+    }
     return (StatusCode::OK, String::new());
 }

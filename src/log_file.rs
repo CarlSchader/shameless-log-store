@@ -48,6 +48,7 @@ pub fn log_file_string_to_logs(file_string: String) -> Result<Vec<log::Log>, Box
     // they should be consistant with the header timestamps
     let mut found_start_timestamp: u64 = 0;
     let mut found_end_timestamp: u64 = 0;
+    let mut previous_timestamp: u64 = 0;
 
     let mut i = 0;
     for line in file_string.split("\n") {
@@ -60,6 +61,10 @@ pub fn log_file_string_to_logs(file_string: String) -> Result<Vec<log::Log>, Box
         } else {
             let new_log = log::Log::from_string(&line.to_string())?;
 
+            if new_log.timestamp < previous_timestamp {
+                return Err("logs in file string out of order".into());
+            }
+
             if new_log.timestamp < found_start_timestamp {
                 found_start_timestamp = new_log.timestamp;
             }
@@ -67,6 +72,7 @@ pub fn log_file_string_to_logs(file_string: String) -> Result<Vec<log::Log>, Box
                 found_end_timestamp  = new_log.timestamp;
             }
 
+            previous_timestamp = new_log.timestamp;
             log_vec.push(new_log);
         }
 
