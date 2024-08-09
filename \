@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fs::File, usize};
 
-use axum::{extract::Query, http::StatusCode, routing::{get, post}, Router};
+use axum::{extract::{Query, Multipart}, http::StatusCode, routing::{get, post}, Router};
 use log_file::tail_file;
 
 mod log;
@@ -12,7 +12,7 @@ async fn main() {
         .route("/", get(|| async { "healthy" }))
         .route("/health", get(|| async { "healthy" }))
         .route("/logs", get(read_logs))
-        .route("/log-file", post(write_log_file));
+        .route("/log_file", post(write_logs));
 
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
@@ -60,7 +60,11 @@ async fn read_logs(Query(params): Query<HashMap<String, String>>) -> (StatusCode
     return (StatusCode::OK, lines.join("\n"));
 }
 
-async fn write_log_file(body: String) -> (StatusCode, String) {
-    println!("{body}");
+async fn write_logs(mut multipart: Multipart) -> (StatusCode, String) {
+    println!("{:?}", multipart);
+    while let Some(field) = multipart.next_field().await.unwrap() {
+        println!("{}", field.name().unwrap().to_string());
+        println!("{}", field.bytes().await.unwrap().len());
+    }
     return (StatusCode::OK, String::new());
 }

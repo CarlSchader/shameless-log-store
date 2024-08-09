@@ -1,4 +1,5 @@
 use std::{cmp, fs, io::{Read, Seek, SeekFrom}};
+use crate::log;
 
 const TAIL_BUFFER_SIZE: usize = 1024;
 
@@ -35,4 +36,58 @@ pub fn tail_file(mut file: &fs::File, lines: usize, line_offset: usize) -> Resul
     }
 
     return Ok(found_lines);
+}
+
+pub fn log_file_string_to_logs(file_string: String) -> Result<Vec<log::Log>, Box<dyn std::error::Error>> {
+    let mut log_vec: Vec<log::Log> = Vec::new();
+    let mut start_timestamp: u64 = 0;
+    let mut end_timestamp: u64 = 0;
+    let mut log_count: usize = 0;
+
+    // these values are the timestamps found in the logs themselves
+    // they should be consistant with the header timestamps
+    let mut found_start_timestamp: u64 = 0;
+    let mut found_end_timestamp: u64 = 0;
+
+    let mut i = 0;
+    for line in file_string.split("\n") {
+        if i == 0 {
+            start_timestamp = line.parse()?;
+        } else if i == 1 {
+            end_timestamp = line.parse()?;
+        } else if i == 2 {
+            log_count = line.parse()?;
+        } else {
+            let new_log = log::Log::from_string(&line.to_string())?;
+
+            if new_log.timestamp < found_start_timestamp {
+                found_start_timestamp = new_log.timestamp;
+            }
+            if new_log.timestamp > found_end_timestamp {
+                found_end_timestamp  = new_log.timestamp;
+            }
+
+            log_vec.push(new_log);
+        }
+
+        i += 1;
+    }
+    
+    if log_vec.len() == 0 {
+        return Err("file string must have at least one log".into());
+    }
+
+    if log_vec.len() != log_count {
+        return Err("file string log count line not consistant with the number of logs in the string".into());
+    }
+
+    if found_start_timestamp != start_timestamp {
+        return Err("header start timestamp isn't consistant with logs".into());
+    }
+    
+    if found_end_timestamp != end_timestamp {
+        return Err("header end timestamp isn't consistant with logs".into());
+    }
+
+    return Ok(log_vec);
 }

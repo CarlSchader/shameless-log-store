@@ -26,4 +26,8 @@ impl Log {
             return Ok(Log{timestamp, payload: String::from("")});
         }
     }
+
+    pub fn to_string(&self) -> String {
+        return format!("{} {}", self.timestamp, self.payload);
+    }
 }
