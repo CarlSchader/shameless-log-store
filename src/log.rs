@@ -31,12 +31,8 @@ impl Log {
     }
 
     pub fn format_vector_as_json(v: &Vec<Log>) -> String {
-        let mut s = String::new();
-        for log in v {
-            s += &log.to_string();
-        }
-
-        return format!("[{s}]");
+        let string_vec: Vec<String> = v.iter().map(|log| log.to_string()).collect();
+        return format!("[{}]", string_vec.join(", "));
     }
 
     pub fn to_line(&self) -> String {
