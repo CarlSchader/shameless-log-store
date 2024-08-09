@@ -23,9 +23,17 @@ async fn read_logs(Query(params): Query<HashMap<String, String>>) -> (StatusCode
         Some(id) => id,
         None => return (StatusCode::BAD_REQUEST, "no user_id provided in query string".to_string()),
     };
+
     let default_limit = String::from("32");
     let limit = params.get("limit").unwrap_or(&default_limit);
     let limit: usize = match limit.parse() {
+        Ok(val) => val,
+        Err(e) => return (StatusCode::OK, format!("error parsing limit query param: {e}")),
+    };
+
+    let default_offset = String::from("0");
+    let offset = params.get("offset").unwrap_or(&default_offset);
+    let offset: usize = match offset.parse() {
         Ok(val) => val,
         Err(e) => return (StatusCode::OK, format!("error parsing limit query param: {e}")),
     };
@@ -35,15 +43,13 @@ async fn read_logs(Query(params): Query<HashMap<String, String>>) -> (StatusCode
         Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("error opening file for {user_id}: {e}")),
     };
 
-    let lines = match tail_file(&f, limit) {
+    let lines = match tail_file(&f, limit, offset) {
         Ok(val) => val,
         Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("error tailing file for {user_id}: {e}")),
     };
 
-    println!("LINES -- {:?}", lines);
     let mut logs: Vec<log::Log> = Vec::new();
     for line in lines.iter() {
-        println!("LINE -- {line}");
         match log::Log::from_string(line) {
             Ok(new_log) => logs.push(new_log),
             Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, format!("error reading log file: {e}")),

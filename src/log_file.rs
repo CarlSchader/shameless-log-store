@@ -2,10 +2,11 @@ use std::{cmp, fs, io::{Read, Seek, SeekFrom}};
 
 const TAIL_BUFFER_SIZE: usize = 1024;
 
-pub fn tail_file(mut file: &fs::File, lines: usize) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+pub fn tail_file(mut file: &fs::File, lines: usize, line_offset: usize) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     let mut found_lines: Vec<String> = Vec::new();
     let mut byte_buffer: [u8; TAIL_BUFFER_SIZE] = [0; TAIL_BUFFER_SIZE];
     let mut position = file.seek(SeekFrom::End(0))?;
+    let mut line_offset = line_offset;
 
     while found_lines.len() < lines && position > 0 {
         position = position.saturating_sub(TAIL_BUFFER_SIZE as u64);
@@ -22,7 +23,14 @@ pub fn tail_file(mut file: &fs::File, lines: usize) -> Result<Vec<String>, Box<d
                     continue;
                 } 
             }
-            found_lines.push(new_line);
+            if line_offset > 0 {
+                line_offset -= 1;
+            } else {
+                found_lines.push(new_line);
+                if found_lines.len() == lines {
+                    return Ok(found_lines);
+                }
+            }
         }
     }
 
